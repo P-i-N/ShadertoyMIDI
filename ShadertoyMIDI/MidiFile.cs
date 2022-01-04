@@ -77,8 +77,7 @@ namespace ShadertoyMIDI
             var result = new MidiTrack();
             result.Index = trackIndex;
 
-            var headerMTrk = br.ReadChars(4);
-            if (headerMTrk[0] != 'M' || headerMTrk[1] != 'T' || headerMTrk[2] != 'r' || headerMTrk[3] != 'k')
+            if (!br.ReadChars(4).SequenceEqual("MTrk"))
                 throw new InvalidDataException("Invalid MIDI track header!");
 
             var trackLength = BitUtils.ConvertToLittleEndian(br.ReadUInt32());
@@ -182,7 +181,32 @@ namespace ShadertoyMIDI
     {
         public int TicksPerQuarterNote { get; private set; } = 0;
 
+        public int Tempo { get; private set; } = 0;
+
         public List<MidiTrack> Tracks { get; private set; } = new List<MidiTrack>();
+
+        private void QuantizeTicks(int quarterNoteSubdiv)
+        {
+            foreach (var track in Tracks)
+            {
+                for (int i = 0; i < track.Events.Count; ++i)
+                {
+                    var e = track.Events[i];
+
+                    var ticksAlign = e.Ticks % quarterNoteSubdiv;
+                    if (ticksAlign < quarterNoteSubdiv / 2)
+                        e.Ticks -= ticksAlign;
+                    else
+                        e.Ticks += quarterNoteSubdiv - ticksAlign;
+
+                    e.Ticks /= quarterNoteSubdiv;
+                    track.Events[i] = e;
+                }
+            }
+
+            Tempo *= quarterNoteSubdiv;
+            TicksPerQuarterNote = TicksPerQuarterNote / quarterNoteSubdiv;
+        }
 
         private void ResolveEventsRangeTempo(int ticksFrom, int ticksTo, int tempo)
         {
@@ -207,23 +231,25 @@ namespace ShadertoyMIDI
         {
             foreach (var track in Tracks)
             {
-                int tempo = -1;
                 int tempoTicks = -1;
 
-                foreach (var e in track.Events)
+                for (int i = 0; i < track.Events.Count; ++i)
                 {
+                    var e = track.Events[i];
                     if (e.Type == MidiEventType.Tempo)
                     {
-                        if (tempo >= 0 && tempoTicks >= 0)
-                            ResolveEventsRangeTempo(tempoTicks, e.Ticks, tempo);
-
-                        tempo = e.Value0;
-                        tempoTicks = e.Ticks;
+                        if (Tempo != 0.0)
+                            Console.WriteLine("Song has multiple tempos specified: previous = {0}, new = {1}", Tempo, e.Value0);
+                        else
+                        {
+                            Tempo = e.Value0;
+                            tempoTicks = e.Ticks;
+                        }
                     }
                 }
 
-                if (tempo >= 0 && tempoTicks >= 0)
-                    ResolveEventsRangeTempo(tempoTicks, int.MaxValue, tempo);
+                if (Tempo > 0 && tempoTicks >= 0)
+                    ResolveEventsRangeTempo(tempoTicks, int.MaxValue, Tempo);
             }
         }
 
@@ -231,8 +257,7 @@ namespace ShadertoyMIDI
         {
             MidiFile result = new MidiFile();
 
-            var headerMThd = br.ReadChars(4);
-            if (headerMThd[0] != 'M' || headerMThd[1] != 'T' || headerMThd[2] != 'h' || headerMThd[3] != 'd')
+            if (!br.ReadChars(4).SequenceEqual("MThd"))
                 throw new InvalidDataException("Invalid MIDI header!");
 
             var headerLength = BitUtils.ConvertToLittleEndian(br.ReadUInt32());
@@ -251,6 +276,7 @@ namespace ShadertoyMIDI
                     result.Tracks.Add(track);
             }
 
+            result.QuantizeTicks(result.TicksPerQuarterNote / 8);
             result.ResolveEventsTiming();
             return result;
         }

@@ -2,7 +2,7 @@
   "profiles": {
     "ShadertoyMIDI": {
       "commandName": "Project",
-      "commandLineArgs": "..\\..\\..\\..\\Maya.mid ..\\..\\..\\..\\Pippi.mid ..\\..\\..\\..\\Karel.mid"
+      "commandLineArgs": "..\\..\\..\\..\\*.mid"
     }
   }
 }

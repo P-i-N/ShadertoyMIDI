@@ -49,7 +49,11 @@ namespace ShadertoyMIDI
         {
             if (generalMidiProgram >= 0 && generalMidiProgram < 8) // Piano
             {
-
+                return new MidiInstrument(
+                    1.25f, 1.125f, 0.0f, 0.0f,
+                    1.0f, 2.0f, 1.0f, 1.0f,
+                    0.005f, 0.005f, 0.25f, 0.1f,
+                    0.0f, 0.0f, 0.0f, 0.0f);
             }
             else if (generalMidiProgram >= 8 && generalMidiProgram < 16) // Chromatic Percussion
             {
@@ -125,8 +129,19 @@ namespace ShadertoyMIDI
             {
 
             }
+            else if (generalMidiProgram >= 80 && generalMidiProgram < 96) // Pads
+            {
+                if (generalMidiProgram == 90) // Pad 3 (polysynth)
+                {
+                    return new MidiInstrument(
+                        2.125f, 0.5f, 0.0f, 0.0f,
+                        1.0f, 2.0001f, 1.0f, 1.0f,
+                        0.005f, 0.005f, 0.25f, 0.1f,
+                        0.0025f, 0.0f, 0.0f, 0.0f);
+                }
+            }
 
-            Console.WriteLine("Unknown instrument {0}, using generic!", generalMidiProgram);
+            Console.WriteLine("Unknown instrument {0} \"{1}\", using generic!", generalMidiProgram, Names[generalMidiProgram]);
             return new MidiInstrument();
         }
 
